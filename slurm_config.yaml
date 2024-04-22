@@ -1,0 +1,40 @@
+defaults:
+  - _self_
+  - override hydra/launcher: slurm
+
+seed: 0
+lo_mask_p: ~
+mask_p: 0.15
+dataset: ~
+subset: ~
+tags: ~
+model: Meta-Llama-3-8B-Instruct
+shuffle: ~
+nepochs: 10
+shard: 0
+num_shards: 1
+nexamples_eval: 128
+bsize: 8
+max_idx: ~
+
+hydra:
+##### SUGGESTED HYDRA CONFIG ###########################
+  sweep: 
+    # subdir is built dynamically using the tags
+    dir: ${oc.env:HOME}/slurm/${oc.select:hydra.launcher.date,${now:%Y-%m-%d}}/${hydra.job.name}
+  run:
+    # once we're running set tags from conf
+    dir: ${hydra.sweep.dir}/${join:${tags}}
+  launcher:
+    cpus_per_task: 4
+    job_name: ${hydra.job.name}
+    mem: 25G
+    env_type: venv
+    env_name: icif
+    qos: m3
+    time: 240
+    gres: gpu:1
+    exclude: gpu012,gpu166,gpu125,gpu052,gpu150,gpu001,gpu173,gpu028,gpu129,gpu127,gpu141,gpu159,gpu162,gpu154,gpu148,gpu157,gpu138,gpu046,gpu039,gpu007,gpu123,gpu130,gpu122,gpu124,gpu135,gpu124,gpu121,gpu140,gpu137,gpu180,gpu175,gpu015,gpu032,gpu151
+    partition: "a40"
+    symlink_dir: /checkpoint/nng
+########################################################
