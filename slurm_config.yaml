@@ -14,8 +14,9 @@ nepochs: 10
 shard: 0
 num_shards: 1
 nexamples_eval: 128
-bsize: 8
+bsize: 4
 max_idx: ~
+outpath: /h/nng/projects/icif/results/
 
 hydra:
 ##### SUGGESTED HYDRA CONFIG ###########################

@@ -14,14 +14,6 @@ from utils import PROMPT_MAP, TEMPLATE_MAP, EOS_TOK_MAP, get_gpu_type
 
 log = logging.getLogger("eval")
 
-curr_gpu = get_gpu_type()
-
-# only run backwards pass methods on A40 GPUs
-if 'A40' not in curr_gpu:
-    METHODS = ['datamodel', 'shapley', 'attention', 'loo']
-else:
-    METHODS = ['datamodel', 'ig', 'saliency', 'shapley', 'attention', 'loo']
-
 METRICS = ['malds', 'slds'] + ['_'.join(v) for v in itertools.product(['suff', 'comp'], ['remove', 'zero'], ['tok', 'seq'])]
 
 # config path set automatically but can also be manually changed
@@ -33,7 +25,7 @@ def eval_datamodel(datamodel, seed=0, nexamples=128):
     res = {}
 
     def print_lds_res(name, res):
-        print(f"{name:20} MaLDS: {res[0]:.5f}\t SLDS: {res[1]:.5f} ")
+        print(f"{name:20} MaLDS: {res[0]:.5f}\t SLDS: {res[1]:.5f}")
         malds.append(res[0])
         slds.append(res[1])
 
@@ -64,6 +56,13 @@ def eval_datamodel(datamodel, seed=0, nexamples=128):
 
 @hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="slurm_config")
 def eval_dataset(cfg: DictConfig):
+    curr_gpu = get_gpu_type()
+
+    # only run backwards pass methods on A40 GPUs
+    if 'A40' not in curr_gpu:
+        METHODS = ['datamodel', 'shapley', 'loo']
+    else:
+        METHODS = ['datamodel', 'ig', 'saliency', 'shapley', 'attention', 'loo']
 
     assert cfg.dataset in PROMPT_MAP, f"{cfg.dataset} not supported."
     prompt = PROMPT_MAP[cfg.dataset]
@@ -77,7 +76,7 @@ def eval_dataset(cfg: DictConfig):
     else:
         dataset = load_dataset(cfg.dataset, cfg.subset)
 
-    split_order = ['test', 'val', 'validation', 'train']
+    split_order = ['test', 'test_r3', 'val', 'validation', 'train']
     for split in split_order:
         if split in dataset:
             testset = dataset[split]
@@ -102,7 +101,7 @@ def eval_dataset(cfg: DictConfig):
     )
 
     # initialize results dict
-    outpath = 'res.pkl'
+    outpath = os.path.join(cfg.outpath, cfg.dataset.split('/')[-1], f'shard_{cfg.shard}.pkl')
     if os.path.exists(outpath):
         res = pkl.load(open(outpath, 'rb'))
 
@@ -128,6 +127,8 @@ def eval_dataset(cfg: DictConfig):
         shard_idx = i // cfg.num_shards
 
         # preprocess choices and document?
+        if cfg.dataset == 'bigbio/med_qa':
+            test_ex['options'] = [o['value'] for o in test_ex['options']]
         ex_prompt = [p.format(**test_ex) for p in prompt]
         datamodel.gen(ex_prompt, gen_start)
 
@@ -150,18 +151,24 @@ def eval_dataset(cfg: DictConfig):
             elif method == 'shapley':
                 datamodel.fit_shap(nepochs=cfg.nepochs)
             elif method == 'attention':
-                datamodel.fit_attention()
+                if datamodel.nwords < 850:
+                    datamodel.fit_attention()
+                else:
+                    datamodel.seq_datamodel = None
+                    datamodel.datamodels = []
+                    res['attention']['slds'].append(None)
             elif method == 'loo':
                 datamodel.fit(mask_type='tok')
 
-            eval_res = eval_datamodel(datamodel, nexamples=cfg.nexamples_eval)
-            for k, v in eval_res.items():
-                res[method][k].append(v)
+            if datamodel.seq_datamodel is not None:
+                eval_res = eval_datamodel(datamodel, nexamples=cfg.nexamples_eval)
+                for k, v in eval_res.items():
+                    res[method][k].append(v)
 
             with open('tmp.pkl', 'wb') as of:
                 pkl.dump(res, of)
 
-            os.rename('tmp.pkl', 'res.pkl')
+            os.rename('tmp.pkl', outpath)
 
 if __name__ == "__main__":
     eval_dataset()

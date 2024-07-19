@@ -520,7 +520,7 @@ class ICDatamodel:
         if np.isnan(seq_spearman):
             seq_spearman = 0
 
-        return np.mean(spearmans), seq_spearman
+        return np.mean(spearmans), seq_spearman, spearmans[0]
 
     def fit_shap(self, nepochs=1, whole_word_masking=True):
         print(f"Calculating sampled Shapley values")
@@ -576,24 +576,27 @@ class ICDatamodel:
     def fit_attention(self, layer=None):
         print("Calculating attention weights")
 
-        out = self.model(self.gen_ids, output_attentions=True)
+        out = self.model(self.gen_ids, mean_attentions=self.c_len, output_attentions=True)
 
         # average attn across all layers and heads
+        """
         if layer is not None:
             attns = out.attentions[layer][0]
         else:
             attns = torch.stack(out.attentions).mean(0)[0]
         attns = attns.mean(0).detach().cpu().numpy()
+        """
+        attns = out.attentions[0].detach().cpu().numpy()
 
         self.datamodels = []
         for i in range(self.gen_len):
             self.datamodels.append(Lasso())
             a_idx = self.c_len + i
-            self.datamodels[-1].coef_ = attns[a_idx, :a_idx]
+            self.datamodels[-1].coef_ = attns[i, :a_idx]
             self.datamodels[-1].intercept_ = 0
 
         self.seq_datamodel = Lasso()
-        self.seq_datamodel.coef_ = attns[self.c_len:, :self.c_len].mean(0)
+        self.seq_datamodel.coef_ = attns[:, :self.c_len].mean(0)
         self.seq_datamodel.intercept_ = 0
 
     def fit_grads(self, nsteps=1, sequential=False):

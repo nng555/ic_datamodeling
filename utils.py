@@ -58,6 +58,33 @@ SENT_GEN = "The sentiment of the above movie review is \""
 
 DROP_POST_PROMPT = "\n\n{question}\n\nAnswer the above question, using information from the passage. Give ONLY the answer without any extra information."
 
+# ANLI
+
+ANLI_POST_PROMPT = "\n\nGiven the above premise and hypothesis, does the premise entail the hypothesis? Please answer ONLY with either \"entailment\", \"contradiction\", or \"neutral\"."
+
+ANLI_GEN = "\""
+
+# BOOLQ
+
+BOOLQ_POST_PROMPT = "\n\n{question}?\n\nAnswer the above question using information from the passage. Please answer ONLY with either \"true\" or \"false\"."
+
+BOOLQ_GEN = "The answer to the question is \""
+
+# WINOGRANDE
+
+WINO_POST_PROMPT = "\n\nWhat word is most likely to fill in the blank, \"{option1}\" or \"{option2}?\""
+
+WINO_GEN = "The word most likely to fill in the blank is \""
+
+# SUMMARIZE
+
+
+# MED QA
+
+MEDQA_POST_PROMPT = "\n\nAnswer ONLY with \"A\", \"B\", \"C\", or \"D\"\n\nA. {options[0]}\nB. {options[1]}\nC. {options[2]}\nD. {options[3]}"
+
+MEDQA_GEN = "The answer to the question is \""
+
 
 # [PRE_PROMPT, CONTENT, POST_PROMPT, GEN_START]
 PROMPT_MAP = {
@@ -69,6 +96,11 @@ PROMPT_MAP = {
     'stanfordnlp/imdb': ["", "{text}", SENT_POST_PROMPT, SENT_GEN],
     'ucinlp/drop': ["", "{passage}", DROP_POST_PROMPT, ""],
     'ehovy/race': ['', "{article}", RACE_POST_PROMPT, RACE_GEN],
+    'google/boolq': ['', "{passage}", BOOLQ_POST_PROMPT, BOOLQ_GEN],
+    'facebook/anli': ['', "Premise:\n{premise}\n\nHypothesis:\n{hypothesis}", ANLI_POST_PROMPT, ANLI_GEN],
+    'winogrande': ["", "{sentence}", WINO_POST_PROMPT, WINO_GEN],
+    'CarperAI/openai_summarize_tldr': None,
+    'bigbio/med_qa': ["", "{question}", MEDQA_POST_PROMPT, MEDQA_GEN],
 }
 
 TEMPLATE_MAP = {
